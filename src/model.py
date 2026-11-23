@@ -99,8 +99,8 @@ def export_onnx(model, path):
         input_names=["spectrogram"],
         output_names=["scores"],
         dynamic_axes={"spectrogram": {0: "batch"}, "scores": {0: "batch"}},
+        external_data=False,
     )
-
 
 def save_class_names(class_names, path):
     with open(path, "w") as file:
