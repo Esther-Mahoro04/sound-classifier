@@ -1,4 +1,4 @@
-"API: health, prediction, upload and retraining endpoints."
+"API: health, prediction, upload, retraining and history endpoints."
 import shutil
 import tempfile
 import time
@@ -6,9 +6,9 @@ from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 
-from src.prediction import load_class_names, load_session, predict_files
-from src.dataset import add_zip_to_training_data
 from src.database import list_retrainings, list_uploads, log_retraining, log_upload
+from src.dataset import add_zip_to_training_data
+from src.prediction import load_class_names, load_session, predict_files
 
 app = FastAPI(title="Sound Classifier API")
 
@@ -41,7 +41,7 @@ def predict_uploads(uploads):
 
 
 def run_retraining():
-    from src.retraining import retrain  
+    from src.retraining import retrain  # loads PyTorch only when needed
 
     training["status"] = "running"
     try:
