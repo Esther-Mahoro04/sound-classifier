@@ -1,0 +1,6 @@
+venv/
+raw_esc50/
+.git/
+notebook/
+__pycache__/
+*.pyc
