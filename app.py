@@ -3,6 +3,9 @@ import datetime
 import json
 import os
 from pathlib import Path
+import io
+import tempfile
+import zipfile
 
 import librosa.display
 import matplotlib.pyplot as plt
@@ -94,21 +97,50 @@ def show_training_status():
             st.json(status["result"])
 
 
-def show_retrain():
-    st.write(
-        "Upload a zip with one folder per sound (for example dog/ and rain/), "
-        "each holding .wav files."
+def show_pipeline_steps():
+    st.markdown(
+        "**How retraining works**\n"
+        "1. Upload a zip of new clips. They are saved and logged in the database.\n"
+        "2. Each clip is cut to 5 seconds and turned into a mel spectrogram.\n"
+        "3. The current model is loaded as a starting point (pre-trained).\n"
+        "4. It is fine-tuned on the old and new clips, then replaces the old model."
     )
+
+
+def preview_first_clip(zip_bytes):
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as archive:
+        names = [n for n in archive.namelist() if n.lower().endswith(".wav") and "__MACOSX" not in n]
+        if not names:
+            return
+        with tempfile.TemporaryDirectory() as folder:
+            path = archive.extract(names[0], folder)
+            st.write(f"Preprocessing preview of {names[0]}:")
+            st.pyplot(spectrogram_figure(path))
+
+
+def show_history():
+    history = call_api("GET", "/history")
+    if history:
+        st.write("Uploads saved in the database")
+        st.dataframe(pd.DataFrame(history["uploads"]))
+        st.write("Retraining runs")
+        st.dataframe(pd.DataFrame(history["retrainings"]))
+
+
+def show_retrain():
+    show_pipeline_steps()
     zip_file = st.file_uploader("Dataset zip", type="zip")
     if zip_file and st.button("Upload dataset"):
         files = {"file": (zip_file.name, zip_file.getvalue())}
         result = call_api("POST", "/upload", files=files)
         if result:
-            st.success(f"{result['clips_added']} clips added to the training data.")
+            st.success(f"{result['clips_added']} clips saved to the training data and logged.")
+            preview_first_clip(zip_file.getvalue())
     if st.button("Retrain model") and call_api("POST", "/retrain"):
         st.info("Retraining started. Press Refresh status in a minute.")
     st.button("Refresh status")
     show_training_status()
+    show_history()
 
 
 def show_class_counts():

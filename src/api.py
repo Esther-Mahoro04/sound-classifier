@@ -8,6 +8,7 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 
 from src.prediction import load_class_names, load_session, predict_files
 from src.dataset import add_zip_to_training_data
+from src.database import list_retrainings, list_uploads, log_retraining, log_upload
 
 app = FastAPI(title="Sound Classifier API")
 
@@ -45,6 +46,7 @@ def run_retraining():
     training["status"] = "running"
     try:
         training["result"] = retrain()
+        log_retraining(training["result"]["accuracy"], training["result"]["train_clips"])
         state["session"] = load_session()
         state["class_names"] = load_class_names()
         training["status"] = "done"
@@ -78,6 +80,7 @@ def upload_dataset(file: UploadFile = File(...)):
             count = add_zip_to_training_data(zip_path)
         except ValueError as error:
             raise HTTPException(status_code=400, detail=str(error))
+    log_upload(file.filename, count)
     return {"clips_added": count}
 
 
@@ -92,3 +95,8 @@ def start_retraining(background_tasks: BackgroundTasks):
 @app.get("/retrain/status")
 def retraining_status():
     return training
+
+
+@app.get("/history")
+def history():
+    return {"uploads": list_uploads(), "retrainings": list_retrainings()}
