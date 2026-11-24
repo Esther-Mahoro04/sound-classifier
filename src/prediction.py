@@ -12,7 +12,11 @@ CLASS_NAMES_PATH = Path("models/class_names.json")
 
 
 def load_session(model_path=MODEL_PATH):
-    return ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 1
+    return ort.InferenceSession(
+        str(model_path), sess_options=options, providers=["CPUExecutionProvider"]
+    )
 
 
 def load_class_names(path=CLASS_NAMES_PATH):
