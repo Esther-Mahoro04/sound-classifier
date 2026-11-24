@@ -73,20 +73,30 @@ def print_record(epoch, record):
     print(f"epoch {epoch}: {numbers}")
 
 
-def train_model(x_train, y_train, num_classes, epochs=30, x_val=None, y_val=None):
-    model = build_model(num_classes)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)  
+def train_model(
+    x_train, y_train, num_classes, epochs=30, x_val=None, y_val=None,
+    model=None, learning_rate=LEARNING_RATE,
+):
+    if model is None:
+        model = build_model(num_classes)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     loss_fn = nn.CrossEntropyLoss()
     loader = make_loader(x_train, y_train, shuffle=True)
     history = []
     for epoch in range(1, epochs + 1):
         loss = train_one_epoch(model, loader, optimizer, loss_fn)
-        scheduler.step()  
+        scheduler.step()
         record = make_record(model, loss, x_train, y_train, x_val, y_val)
         history.append(record)
         print_record(epoch, record)
     return model, history
+
+
+def load_pretrained(num_classes, path):
+    model = build_model(num_classes)
+    model.load_state_dict(torch.load(path, map_location="cpu"))
+    return model
 
 
 def export_onnx(model, path):
@@ -101,6 +111,7 @@ def export_onnx(model, path):
         dynamic_axes={"spectrogram": {0: "batch"}, "scores": {0: "batch"}},
         external_data=False,
     )
+
 
 def save_class_names(class_names, path):
     with open(path, "w") as file:

@@ -1,53 +1,22 @@
-"Retraining: add an uploaded zip to the training data and train a new model."
+"""Retraining: fine-tune the saved model on the training folder and swap it in."""
 import os
-import shutil
-import tempfile
-import zipfile
 from pathlib import Path
 
 import torch
 
 from src.evaluation import dict_report, save_report
-from src.model import export_onnx, predict_labels, save_class_names, train_model
-from src.preprocessing import get_class_names, load_folder
+from src.model import (
+    export_onnx, load_pretrained, predict_labels, save_class_names, train_model,
+)
+from src.preprocessing import load_folder
 
 TRAIN_DIR = Path("data/train")
 TEST_DIR = Path("data/test")
 MODELS_DIR = Path("models")
 REPORTS_DIR = Path("reports")
-
-
-def extract_zip(zip_path, target_folder):
-    with zipfile.ZipFile(zip_path) as archive:
-        archive.extractall(target_folder)
-
-
-def find_wav_files(folder):
-    files = Path(folder).rglob("*.wav")
-    return [f for f in files if "__MACOSX" not in f.parts and not f.name.startswith("._")]
-
-
-def check_wav_files(wav_files, known_classes):
-    if not wav_files:
-        raise ValueError("The zip contains no .wav files.")
-    unknown = {f.parent.name for f in wav_files} - set(known_classes)
-    if unknown:
-        raise ValueError(f"Unknown class folders in zip: {sorted(unknown)}")
-
-
-def copy_into_training(wav_files):
-    for path in wav_files:
-        shutil.copy(path, TRAIN_DIR / path.parent.name / path.name)
-    return len(wav_files)
-
-
-def add_zip_to_training_data(zip_path):
-    known_classes = get_class_names(TRAIN_DIR)
-    with tempfile.TemporaryDirectory() as temp_folder:
-        extract_zip(zip_path, temp_folder)
-        wav_files = find_wav_files(temp_folder)
-        check_wav_files(wav_files, known_classes)
-        return copy_into_training(wav_files)
+EPOCHS = int(os.getenv("RETRAIN_EPOCHS", "15"))
+PRETRAINED_PATH = MODELS_DIR / "sound_model.pt"
+FINE_TUNE_LR = 0.0003
 
 
 def replace_onnx_model(model):
@@ -62,10 +31,14 @@ def save_new_model(model, class_names):
     save_class_names(class_names, MODELS_DIR / "class_names.json")
 
 
-def retrain(epochs=40):
+def retrain(epochs=EPOCHS):
     x_train, y_train, class_names = load_folder(TRAIN_DIR)
     x_test, y_test, _ = load_folder(TEST_DIR)
-    model, _ = train_model(x_train, y_train, len(class_names), epochs, x_test, y_test)
+    pretrained = load_pretrained(len(class_names), PRETRAINED_PATH)
+    model, _ = train_model(
+        x_train, y_train, len(class_names), epochs, x_test, y_test,
+        model=pretrained, learning_rate=FINE_TUNE_LR,
+    )
     report = dict_report(y_test, predict_labels(model, x_test), class_names)
     save_new_model(model, class_names)
     save_report(report, REPORTS_DIR / "metrics.json")

@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 
 from src.prediction import load_class_names, load_session, predict_files
-from src.retraining import add_zip_to_training_data, retrain
+from src.dataset import add_zip_to_training_data
 
 app = FastAPI(title="Sound Classifier API")
 
@@ -40,6 +40,8 @@ def predict_uploads(uploads):
 
 
 def run_retraining():
+    from src.retraining import retrain  
+
     training["status"] = "running"
     try:
         training["result"] = retrain()
