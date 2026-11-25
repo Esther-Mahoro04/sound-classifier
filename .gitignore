@@ -1,3 +1,6 @@
 venv/
 raw_esc50/
+__pycache__/
+*.pyc
 data/app.db
+.DS_Store
