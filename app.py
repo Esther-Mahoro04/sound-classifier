@@ -1,4 +1,4 @@
-"Streamlit UI: samples, prediction, retraining and status."
+"Streamlit UI: samples, prediction, retraining, insights and status."
 import datetime
 import io
 import json
@@ -13,12 +13,36 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from src.insights import build_feature_table
 from src.preprocessing import SAMPLE_RATE, audio_to_spectrogram, load_audio
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 TRAIN_DIR = Path("data/train")
 TEST_DIR = Path("data/test")
 METRICS_PATH = Path("reports/metrics.json")
+
+BALANCE_TEXT = (
+    "**Class balance.** Every class has the same number of clips, so no sound "
+    "dominates the training and accuracy is a fair way to judge the model."
+)
+LOUDNESS_TEXT = (
+    "**Loudness.** Chainsaw and helicopter are by far the loudest sounds, while "
+    "clock tick, sneezing and crackling fire are the quietest. Loudness separates "
+    "the loud engines from the quiet sounds, but cannot tell apart the classes in "
+    "the middle, such as dog, rooster and rain."
+)
+BRIGHTNESS_TEXT = (
+    "**Brightness (spectral centroid).** Rain is the brightest because its energy "
+    "is spread over high frequencies like hiss. Dog and rooster are the darkest, "
+    "with most energy at lower frequencies. Helicopter and chainsaw are both loud "
+    "but differ in brightness, so the two features together separate them."
+)
+STORY_TEXT = (
+    "**The story.** No single feature identifies every sound, but loudness and "
+    "brightness together place most classes in different regions. Quiet, short "
+    "sounds (clock tick, sneezing, dog) look alike to the model, which is where "
+    "it makes most of its mistakes."
+)
 
 
 def call_api(method, path, **kwargs):
@@ -156,6 +180,28 @@ def show_retrain():
     show_history()
 
 
+@st.cache_data(show_spinner="Measuring the clips...")
+def load_feature_table():
+    return build_feature_table(TRAIN_DIR)
+
+
+def show_insights():
+    if not TRAIN_DIR.exists():
+        st.info("The dataset is not available here.")
+        return
+    features = load_feature_table()
+    st.write("Clips per class")
+    st.bar_chart(features["class"].value_counts().sort_index())
+    st.markdown(BALANCE_TEXT)
+    st.write("Average loudness (RMS) per class")
+    st.bar_chart(features.groupby("class")["rms"].mean())
+    st.markdown(LOUDNESS_TEXT)
+    st.write("Average brightness (spectral centroid, Hz) per class")
+    st.bar_chart(features.groupby("class")["centroid"].mean())
+    st.markdown(BRIGHTNESS_TEXT)
+    st.markdown(STORY_TEXT)
+
+
 def show_class_counts():
     counts = {p.name: len(list(p.glob("*.wav"))) for p in class_folders(TRAIN_DIR)}
     st.write("Training clips per class")
@@ -184,13 +230,16 @@ def show_status():
 
 def main():
     st.title("Environmental Sound Classifier")
-    about, predict, retrain, status = st.tabs(["About", "Predict", "Retrain", "Status"])
+    tab_names = ["About", "Predict", "Retrain", "Insights", "Status"]
+    about, predict, retrain, insights, status = st.tabs(tab_names)
     with about:
         show_about()
     with predict:
         show_predict()
     with retrain:
         show_retrain()
+    with insights:
+        show_insights()
     with status:
         show_status()
 
