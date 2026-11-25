@@ -1,11 +1,11 @@
 "Streamlit UI: samples, prediction, retraining and status."
 import datetime
+import io
 import json
 import os
-from pathlib import Path
-import io
 import tempfile
 import zipfile
+from pathlib import Path
 
 import librosa.display
 import matplotlib.pyplot as plt
@@ -109,13 +109,23 @@ def show_pipeline_steps():
 
 def preview_first_clip(zip_bytes):
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as archive:
-        names = [n for n in archive.namelist() if n.lower().endswith(".wav") and "__MACOSX" not in n]
+        names = [
+            n for n in archive.namelist()
+            if n.lower().endswith(".wav") and "__MACOSX" not in n
+        ]
         if not names:
             return
         with tempfile.TemporaryDirectory() as folder:
             path = archive.extract(names[0], folder)
             st.write(f"Preprocessing preview of {names[0]}:")
             st.pyplot(spectrogram_figure(path))
+
+
+def show_last_upload():
+    last = st.session_state.get("last_upload")
+    if last:
+        st.success(last["message"])
+        preview_first_clip(last["zip_bytes"])
 
 
 def show_history():
@@ -134,8 +144,11 @@ def show_retrain():
         files = {"file": (zip_file.name, zip_file.getvalue())}
         result = call_api("POST", "/upload", files=files)
         if result:
-            st.success(f"{result['clips_added']} clips saved to the training data and logged.")
-            preview_first_clip(zip_file.getvalue())
+            st.session_state["last_upload"] = {
+                "message": f"{result['clips_added']} clips saved to the training data and logged.",
+                "zip_bytes": zip_file.getvalue(),
+            }
+    show_last_upload()
     if st.button("Retrain model") and call_api("POST", "/retrain"):
         st.info("Retraining started. Press Refresh status in a minute.")
     st.button("Refresh status")
