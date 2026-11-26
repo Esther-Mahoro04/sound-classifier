@@ -2,7 +2,7 @@
 
 Classifies 5-second audio clips into 10 environmental sounds (dog, rooster, rain, sea waves, crying baby, clock tick, sneezing, helicopter, chainsaw, crackling fire) using mel spectrograms and a small CNN.
 
-- **Video demo:** YOUR_YOUTUBE_LINK
+- **Video demo:** https://youtu.be/sqgn3LbzVt4
 - **Live app (Azure VM):** http://102.37.14.131:8501
 - **Live API docs:** http://102.37.14.131:8000/docs
 
