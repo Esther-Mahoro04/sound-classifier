@@ -6,7 +6,7 @@ Classifies 5-second audio clips into 10 environmental sounds (dog, rooster, rain
 - **Live app (Azure VM):** http://102.37.14.131:8501
 - **Live API docs:** http://102.37.14.131:8000/docs
 
-The live links use http (no certificate). The server may be stopped after grading.
+The live links use http because i have no certificate)
 
 ## Project description
 Data: the ESC-10 subset of ESC-50 (400 clips, 320 train / 80 test). Each clip is resampled, cut to 5 seconds and turned into a 64-band mel spectrogram. A CNN (3 convolution blocks with batch normalization, dropout, Adam, cosine learning-rate schedule) is trained in `notebook/sound_classifier.ipynb`, then exported to ONNX for fast prediction. Test accuracy is about 0.81 (macro F1 0.81).
@@ -26,7 +26,7 @@ Model files: `models/sound_model.pt` (PyTorch weights, used as the starting poin
 | GET /health | Status and uptime |
 | POST /predict | One `.wav` file |
 | POST /predict-batch | Several `.wav` files |
-| POST /upload | Zip of new training clips |
+| POST /upload | Zip of new training clips |y|
 | POST /retrain | Start retraining |
 | GET /retrain/status | Training status |
 | GET /history | Uploads and retraining runs |
